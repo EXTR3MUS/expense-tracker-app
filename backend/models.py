@@ -1,38 +1,37 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, CheckConstraint, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Text, CheckConstraint, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 
 class Category(Base):
-    __tablename__ = "categories"
+    __tablename__ = "Category"
     
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False, unique=True)
-    description = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    category_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False, unique=True)
     
     # Relacionamento
-    expenses = relationship("Expense", back_populates="category")
-    
-    __table_args__ = (
-        CheckConstraint('length(name) > 0', name='check_category_name_not_empty'),
-    )
+    transactions = relationship("Transaction", back_populates="category")
 
 
-class Expense(Base):
-    __tablename__ = "expenses"
+class Transaction(Base):
+    __tablename__ = "Transactions"
     
-    id = Column(Integer, primary_key=True, index=True)
-    description = Column(String(255), nullable=False)
+    transaction_id = Column(Integer, primary_key=True, autoincrement=True)
     amount = Column(Float, nullable=False)
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
-    date = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    description = Column(Text)
+    date = Column(Text, default=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    category_id = Column(Integer, ForeignKey("Category.category_id"), nullable=False)
     
     # Relacionamento
-    category = relationship("Category", back_populates="expenses")
+    category = relationship("Category", back_populates="transactions")
     
     __table_args__ = (
         CheckConstraint('amount > 0', name='check_amount_positive'),
-        CheckConstraint('length(description) > 0', name='check_description_not_empty'),
     )
+
+
+class Budget(Base):
+    __tablename__ = "Budget"
+    
+    budget_id = Column(Integer, primary_key=True)
+    total_spent_ever = Column(Float, default=0)

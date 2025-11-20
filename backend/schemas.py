@@ -1,31 +1,27 @@
 from pydantic import BaseModel, Field, validator
-from datetime import datetime
 from typing import Optional
 
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=255)
 
 class CategoryCreate(CategoryBase):
     pass
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=255)
 
 class CategoryResponse(CategoryBase):
-    id: int
-    created_at: datetime
+    category_id: int
     
     class Config:
         from_attributes = True
 
 
-class ExpenseBase(BaseModel):
-    description: str = Field(..., min_length=1, max_length=255)
+class TransactionBase(BaseModel):
     amount: float = Field(..., gt=0)
+    description: Optional[str] = None
     category_id: int
-    date: Optional[datetime] = None
+    date: Optional[str] = None
     
     @validator('amount')
     def validate_amount(cls, v):
@@ -33,14 +29,14 @@ class ExpenseBase(BaseModel):
             raise ValueError('Amount must be greater than 0')
         return v
 
-class ExpenseCreate(ExpenseBase):
+class TransactionCreate(TransactionBase):
     pass
 
-class ExpenseUpdate(BaseModel):
-    description: Optional[str] = Field(None, min_length=1, max_length=255)
+class TransactionUpdate(BaseModel):
     amount: Optional[float] = Field(None, gt=0)
+    description: Optional[str] = None
     category_id: Optional[int] = None
-    date: Optional[datetime] = None
+    date: Optional[str] = None
     
     @validator('amount')
     def validate_amount(cls, v):
@@ -48,10 +44,21 @@ class ExpenseUpdate(BaseModel):
             raise ValueError('Amount must be greater than 0')
         return v
 
-class ExpenseResponse(ExpenseBase):
-    id: int
-    created_at: datetime
+class TransactionResponse(BaseModel):
+    transaction_id: int
+    amount: float
+    description: Optional[str]
+    date: str
+    category_id: int
     category: CategoryResponse
+    
+    class Config:
+        from_attributes = True
+
+
+class BudgetResponse(BaseModel):
+    budget_id: int
+    total_spent_ever: float
     
     class Config:
         from_attributes = True

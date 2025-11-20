@@ -27,28 +27,36 @@ export default {
     return api.delete(`/categories/${id}`)
   },
 
-  // Expenses
-  getExpenses() {
-    return api.get('/expenses')
+  // Transactions
+  getTransactions() {
+    return api.get('/transactions')
   },
-  getExpense(id) {
-    return api.get(`/expenses/${id}`)
+  getTransaction(id) {
+    return api.get(`/transactions/${id}`)
   },
-  createExpense(data) {
-    return api.post('/expenses', data)
+  createTransaction(data) {
+    return api.post('/transactions', data)
   },
-  updateExpense(id, data) {
-    return api.put(`/expenses/${id}`, data)
+  updateTransaction(id, data) {
+    return api.put(`/transactions/${id}`, data)
   },
-  deleteExpense(id) {
-    return api.delete(`/expenses/${id}`)
+  deleteTransaction(id) {
+    return api.delete(`/transactions/${id}`)
   },
 
   // Statistics
-  getSummaryStatistics() {
-    return api.get('/statistics/summary')
+  getMonthlyStatistics() {
+    return api.get('/statistics/monthly')
+  },
+  getBudget() {
+    return api.get('/statistics/budget')
   },
   getCategoryStatistics() {
     return api.get('/statistics/by-category')
+  },
+
+  // Audit Logs
+  getAuditLogs() {
+    return api.get('/audit-logs')
   }
 }

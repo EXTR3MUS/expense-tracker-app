@@ -24,7 +24,7 @@ def get_categories(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Category).offset(skip).limit(limit).all()
 
 def get_category(db: Session, category_id: int):
-    category = db.query(models.Category).filter(models.Category.id == category_id).first()
+    category = db.query(models.Category).filter(models.Category.category_id == category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     return category
@@ -58,103 +58,134 @@ def delete_category(db: Session, category_id: int):
         )
 
 
-# CRUD de Despesas
-def create_expense(db: Session, expense: schemas.ExpenseCreate):
+# CRUD de Transações
+def create_transaction(db: Session, transaction: schemas.TransactionCreate):
     # Verificar se a categoria existe
-    category = db.query(models.Category).filter(models.Category.id == expense.category_id).first()
+    category = db.query(models.Category).filter(models.Category.category_id == transaction.category_id).first()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
     try:
-        expense_data = expense.dict()
-        if expense_data['date'] is None:
-            expense_data['date'] = datetime.utcnow()
+        transaction_data = transaction.dict()
+        if transaction_data['date'] is None:
+            transaction_data['date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        db_expense = models.Expense(**expense_data)
-        db.add(db_expense)
+        db_transaction = models.Transaction(**transaction_data)
+        db.add(db_transaction)
         db.commit()
-        db.refresh(db_expense)
-        return db_expense
+        db.refresh(db_transaction)
+        return db_transaction
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error creating expense: {str(e)}"
+            detail=f"Error creating transaction: {str(e)}"
         )
 
-def get_expenses(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Expense).offset(skip).limit(limit).all()
+def get_transactions(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Transaction).offset(skip).limit(limit).all()
 
-def get_expense(db: Session, expense_id: int):
-    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
-    if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
-    return expense
+def get_transaction(db: Session, transaction_id: int):
+    transaction = db.query(models.Transaction).filter(models.Transaction.transaction_id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return transaction
 
-def update_expense(db: Session, expense_id: int, expense: schemas.ExpenseUpdate):
-    db_expense = get_expense(db, expense_id)
+def update_transaction(db: Session, transaction_id: int, transaction: schemas.TransactionUpdate):
+    db_transaction = get_transaction(db, transaction_id)
     
     # Verificar se a categoria existe, caso seja fornecida
-    if expense.category_id:
-        category = db.query(models.Category).filter(models.Category.id == expense.category_id).first()
+    if transaction.category_id:
+        category = db.query(models.Category).filter(models.Category.category_id == transaction.category_id).first()
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
     
     try:
-        update_data = expense.dict(exclude_unset=True)
+        update_data = transaction.dict(exclude_unset=True)
         for key, value in update_data.items():
-            setattr(db_expense, key, value)
+            setattr(db_transaction, key, value)
         db.commit()
-        db.refresh(db_expense)
-        return db_expense
+        db.refresh(db_transaction)
+        return db_transaction
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error updating expense: {str(e)}"
+            detail=f"Error updating transaction: {str(e)}"
         )
 
-def delete_expense(db: Session, expense_id: int):
-    db_expense = get_expense(db, expense_id)
+def delete_transaction(db: Session, transaction_id: int):
+    db_transaction = get_transaction(db, transaction_id)
     try:
-        db.delete(db_expense)
+        db.delete(db_transaction)
         db.commit()
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Error deleting expense: {str(e)}"
+            detail=f"Error deleting transaction: {str(e)}"
         )
 
 
-# Funções para estatísticas (simulando procedures/views)
-def get_expense_summary(db: Session):
-    """Simula uma stored procedure que retorna resumo de despesas"""
-    total = db.query(func.sum(models.Expense.amount)).scalar() or 0
-    count = db.query(func.count(models.Expense.id)).scalar() or 0
-    avg = db.query(func.avg(models.Expense.amount)).scalar() or 0
-    
-    return {
-        "total_expenses": float(total),
-        "expense_count": count,
-        "average_expense": float(avg)
-    }
+# Funções para estatísticas (usando a VIEW)
+def get_monthly_summary(db: Session):
+    """Usa a VIEW View_Monthly_Summary"""
+    result = db.execute(text("SELECT * FROM View_Monthly_Summary LIMIT 12"))
+    return [
+        {
+            "month": row[0],
+            "total_expenses": float(row[1] or 0)
+        }
+        for row in result
+    ]
 
-def get_expenses_by_category(db: Session):
-    """Simula uma view que agrupa despesas por categoria"""
+def get_budget_info(db: Session):
+    """Retorna informações do budget (atualizado via trigger)"""
+    budget = db.query(models.Budget).filter(models.Budget.budget_id == 1).first()
+    if not budget:
+        # Criar budget inicial se não existir
+        budget = models.Budget(budget_id=1, total_spent_ever=0)
+        db.add(budget)
+        db.commit()
+        db.refresh(budget)
+    return budget
+
+def get_transactions_by_category(db: Session):
+    """Agrupa transações por categoria"""
     results = db.query(
         models.Category.name,
-        func.count(models.Expense.id).label('count'),
-        func.sum(models.Expense.amount).label('total'),
-        func.avg(models.Expense.amount).label('average')
-    ).join(models.Expense).group_by(models.Category.id).all()
+        func.count(models.Transaction.transaction_id).label('count'),
+        func.sum(models.Transaction.amount).label('total'),
+        func.avg(models.Transaction.amount).label('average')
+    ).join(models.Transaction).group_by(models.Category.category_id).all()
     
     return [
         {
             "category": r.name,
-            "expense_count": r.count,
+            "transaction_count": r.count,
             "total_amount": float(r.total or 0),
             "average_amount": float(r.average or 0)
         }
         for r in results
+    ]
+
+
+def get_audit_logs(db: Session, skip: int = 0, limit: int = 100):
+    """Retorna logs de auditoria das transações"""
+    result = db.execute(text("""
+        SELECT * FROM Transaction_Log 
+        ORDER BY log_timestamp DESC 
+        LIMIT :limit OFFSET :skip
+    """), {"limit": limit, "skip": skip})
+    
+    columns = ['log_id', 'operation', 'transaction_id', 
+               'old_amount', 'new_amount', 
+               'old_description', 'new_description',
+               'old_date', 'new_date',
+               'old_category_id', 'new_category_id',
+               'log_timestamp']
+    
+    return [
+        {col: row[i] for i, col in enumerate(columns)}
+        for row in result
     ]

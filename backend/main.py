@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base
+from database import init_database
 import models
 import routes
 
-# Criar as tabelas no banco de dados
-Base.metadata.create_all(bind=engine)
+# Inicializar o banco de dados (executa SQL setup se necessário)
+init_database()
 
 app = FastAPI(title="Expense Tracker API", version="1.0.0")
 
