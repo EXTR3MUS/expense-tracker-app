@@ -127,7 +127,7 @@ def delete_transaction(db: Session, transaction_id: int):
         )
 
 
-# Funções para estatísticas (usando a VIEW)
+# Funções para estatísticas (usando a VIEW e stored procedures)
 def get_monthly_summary(db: Session):
     """Usa a VIEW View_Monthly_Summary"""
     result = db.execute(text("SELECT * FROM View_Monthly_Summary LIMIT 12"))
@@ -151,22 +151,17 @@ def get_budget_info(db: Session):
     return budget
 
 def get_transactions_by_category(db: Session):
-    """Agrupa transações por categoria"""
-    results = db.query(
-        models.Category.name,
-        func.count(models.Transaction.transaction_id).label('count'),
-        func.sum(models.Transaction.amount).label('total'),
-        func.avg(models.Transaction.amount).label('average')
-    ).join(models.Transaction).group_by(models.Category.category_id).all()
+    """Usa stored procedure get_expenses_by_category()"""
+    result = db.execute(text("SELECT * FROM get_expenses_by_category()"))
     
     return [
         {
-            "category": r.name,
-            "transaction_count": r.count,
-            "total_amount": float(r.total or 0),
-            "average_amount": float(r.average or 0)
+            "category": row[0],
+            "transaction_count": int(row[1] or 0),
+            "total_amount": float(row[2] or 0),
+            "average_amount": float(row[3] or 0)
         }
-        for r in results
+        for row in result
     ]
 
 

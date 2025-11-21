@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional
+from datetime import datetime
+from decimal import Decimal
 
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -21,7 +23,7 @@ class TransactionBase(BaseModel):
     amount: float = Field(..., gt=0)
     description: Optional[str] = None
     category_id: int
-    date: Optional[str] = None
+    date: Optional[datetime] = None
     
     @validator('amount')
     def validate_amount(cls, v):
@@ -36,7 +38,7 @@ class TransactionUpdate(BaseModel):
     amount: Optional[float] = Field(None, gt=0)
     description: Optional[str] = None
     category_id: Optional[int] = None
-    date: Optional[str] = None
+    date: Optional[datetime] = None
     
     @validator('amount')
     def validate_amount(cls, v):
@@ -48,12 +50,15 @@ class TransactionResponse(BaseModel):
     transaction_id: int
     amount: float
     description: Optional[str]
-    date: str
+    date: datetime
     category_id: int
     category: CategoryResponse
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
 
 
 class BudgetResponse(BaseModel):
